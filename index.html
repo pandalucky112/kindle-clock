@@ -5,55 +5,33 @@
 <meta http-equiv="refresh" content="300">
 <style>
   body { font-family: sans-serif; background:#fff; color:#000;
-         text-align:center; margin:10px 12px; }
+         text-align:center; margin:6px 8px; }
   /* 顶部星期+农历 */
-  #topline { font-size:25px; color:#333; }
-  /* 翻页时钟 */
-  .clock { display:flex; justify-content:center; margin-top:8px; }
-  .digit { position:relative; width:102px; height:148px; background:#000;
-           border-radius:14px; color:#fff; font-size:92px; font-weight:bold;
-           margin:0 5px; overflow:hidden; }
-  .digit > div { position:absolute; left:0; right:0; height:50%;
-                 overflow:hidden; background:#000; display:block; }
-  .digit .top { top:0; border-radius:14px 14px 0 0; }
-  .digit .bottom { bottom:0; border-radius:0 0 14px 14px; }
-  .digit .ft { top:0; z-index:3; transform-origin:bottom;
-               border-radius:14px 14px 0 0; }
-  .digit .fb { bottom:0; z-index:3; transform-origin:top;
-               transform:rotateX(90deg); border-radius:0 0 14px 14px; }
-  .digit .ft.fold { transform:rotateX(-90deg); transition:transform .28s ease-in; }
-  .digit .fb.unfold { transform:rotateX(0deg); transition:transform .28s ease-out; }
-  .inner { display:flex; justify-content:center; align-items:center;
-           width:100%; height:148px; }
-  .bottom .inner, .fb .inner { margin-top:-74px; }
-  .colon { font-size:78px; font-weight:bold; line-height:148px; }
+  #topline { font-size:19px; color:#333; }
+  /* 大时钟：黑色数字 */
+  #clock { font-size:95px; font-weight:bold; letter-spacing:4px;
+           margin-top:5px; line-height:1.1; }
   /* 天气行 */
-  #weather { font-size:27px; margin-top:10px; min-height:34px; }
+  #weather { font-size:21px; margin-top:6px; min-height:26px; }
   /* 月历 */
-  #cal-title { font-size:29px; font-weight:bold; margin-top:12px; }
-  table.cal { width:100%; border-collapse:collapse; margin-top:6px; table-layout:fixed; }
-  table.cal th { font-size:19px; padding:1px; font-weight:bold; }
-  table.cal td { border:1px solid #000; height:50px; vertical-align:top;
-                 padding:2px 3px; text-align:left; overflow:hidden; }
-  .dnum { font-size:23px; font-weight:bold; }
-  .lunar { font-size:14px; color:#333; }
-  .tag { font-size:13px; background:#000; color:#fff; border-radius:5px; padding:0 3px; }
+  #cal-title { font-size:22px; font-weight:bold; margin-top:7px; }
+  table.cal { width:100%; border-collapse:collapse; margin-top:4px; table-layout:fixed; }
+  table.cal th { font-size:15px; padding:0; font-weight:bold; }
+  table.cal td { border:1px solid #000; height:45px; vertical-align:top;
+                 padding:1px 2px; text-align:left; overflow:hidden; }
+  .dnum { font-size:19px; font-weight:bold; }
+  .lunar { font-size:12px; color:#333; }
+  .tag { font-size:11px; background:#000; color:#fff; border-radius:4px; padding:0 2px; }
   td.we { background:#eee; }
   td.today { background:#000; color:#fff; }
   td.today .lunar { color:#bbb; }
   /* 简易黄历 */
-  #hl { font-size:22px; margin-top:10px; }
+  #hl { font-size:17px; margin-top:7px; }
 </style>
 </head>
 <body>
   <div id="topline"></div>
-  <div class="clock">
-    <div class="digit" id="d0"></div>
-    <div class="digit" id="d1"></div>
-    <div class="colon">:</div>
-    <div class="digit" id="d2"></div>
-    <div class="digit" id="d3"></div>
-  </div>
+  <div id="clock">--:--</div>
   <div id="weather">天气加载中...</div>
   <div id="cal-title"></div>
   <table class="cal" id="cal"></table>
@@ -67,50 +45,51 @@
   var weekName = ["一","二","三","四","五","六","日"];
   function p2(n){ return ("0"+n).slice(-2); }
 
-  // ---------- 翻页时钟 ----------
-  var digitEls = [];
-  for (var i=0; i<4; i++){
-    var el = document.getElementById('d'+i);
-    el.innerHTML = '<div class="top"><div class="inner">0</div></div>'+
-                   '<div class="bottom"><div class="inner">0</div></div>'+
-                   '<div class="ft"><div class="inner">0</div></div>'+
-                   '<div class="fb"><div class="inner">0</div></div>';
-    digitEls.push(el);
+  // 英文天气 → 中文对照表
+  var wxZh = {
+    "Sunny":"晴", "Clear":"晴", "Partly cloudy":"多云",
+    "Partly Cloudy":"多云", "Cloudy":"阴", "Overcast":"阴",
+    "Mist":"薄雾", "Fog":"雾", "Freezing fog":"冻雾",
+    "Patchy rain possible":"局部有雨", "Patchy light rain":"零星小雨",
+    "Light rain":"小雨", "Light rain shower":"小阵雨",
+    "Moderate rain":"中雨", "Moderate or heavy rain shower":"中到大阵雨",
+    "Heavy rain":"大雨", "Torrential rain":"暴雨",
+    "Patchy snow possible":"局部有雪", "Light snow":"小雪",
+    "Moderate snow":"中雪", "Heavy snow":"大雪",
+    "Patchy sleet possible":"局部雨夹雪", "Light sleet":"雨夹雪",
+    "Patchy light drizzle":"零星毛毛雨", "Light drizzle":"毛毛雨",
+    "Patchy light snow":"零星小雪", "Thundery outbreaks possible":"可能有雷暴",
+    "Moderate or heavy rain with thunder":"雷阵雨",
+    "Blizzard":"暴风雪", "Blowing snow":"吹雪", "Ice pellets":"冰粒",
+    "Rain":"雨", "Showers":"阵雨", "Drizzle":"毛毛雨", "Snow":"雪"
+  };
+  function zh(w){
+    w = (w+"").trim();
+    if (wxZh[w]) return wxZh[w];
+    for (var k in wxZh){
+      if (w.indexOf(k) >= 0) return wxZh[k];
+    }
+    return w;   // 没见过的词保持原样
   }
-  function setDigit(el, val){
-    var c = el.children;
-    var top = c[0].firstChild, bot = c[1].firstChild,
-        ft = c[2].firstChild, fb = c[3].firstChild;
-    var old = top.textContent;
-    if (old === val) return;
-    ft.textContent = old; fb.textContent = old;
-    top.textContent = val;
-    c[2].classList.add('fold');
-    setTimeout(function(){
-      c[3].classList.add('unfold');
-      setTimeout(function(){
-        bot.textContent = val;
-        c[2].classList.remove('fold');
-        c[3].classList.remove('unfold');
-      }, 300);
-    }, 300);
-  }
+
+  // ---------- 时钟 ----------
   function tickClock(){
-    var d = new Date(), t = p2(d.getHours())+p2(d.getMinutes());
-    for (var i=0; i<4; i++) setDigit(digitEls[i], t.charAt(i));
+    var d = new Date();
+    document.getElementById('clock').textContent =
+      p2(d.getHours())+":"+p2(d.getMinutes());
   }
   tickClock();
   setInterval(tickClock, 1000);
 
-  // ---------- 天气（中文显示） ----------
+  // ---------- 天气（强制中文显示） ----------
   fetch("https://wttr.in/"+CITY+"?format=j1&lang=zh")
     .then(function(r){ return r.json(); })
     .then(function(d){
       var cur = d.current_condition[0];
       var t1 = d.weather[1];
       document.getElementById('weather').textContent =
-        CITY_CN + " " + cur.weatherDesc[0].value + " " + cur.temp_C + "℃ ｜ 明天 " +
-        t1.dayweather + " " + t1.nighttemp + "~" + t1.daytemp + "℃";
+        CITY_CN + " " + zh(cur.weatherDesc[0].value) + " " + cur.temp_C + "℃ ｜ 明天 " +
+        zh(t1.dayweather) + " " + t1.nighttemp + "~" + t1.daytemp + "℃";
     })
     .catch(function(){
       document.getElementById('weather').textContent = "天气获取失败";
