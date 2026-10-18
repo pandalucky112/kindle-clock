@@ -78,7 +78,7 @@ return d.style.webkitTransform!==undefined||d.style.transform!==undefined;})();
 /* ================= 布局尺寸 ================= */
 function baseFont(){document.body.style.fontSize=Math.max(12,Math.round(window.innerWidth/26))+'px';}
 function sizeClock(){
-  var H=Math.round(window.innerHeight*0.29);var W=Math.min(Math.ceil(H*0.88*0.74),Math.min(Math.round(H*0.66),Math.floor((window.innerWidth*0.88-Math.round(H*0.20))/4.35)));
+  var H=Math.min(Math.round(window.innerHeight*0.29),Math.round(window.innerWidth*0.31));var W=Math.min(Math.ceil(H*0.88*0.74),Math.min(Math.round(H*0.66),Math.floor((window.innerWidth*0.88-Math.round(H*0.20))/4.35)));
   var cards=document.getElementsByClassName('card');
   for(var i=0;i<cards.length;i++){
     cards[i].style.height=H+'px';cards[i].style.width=W+'px';
