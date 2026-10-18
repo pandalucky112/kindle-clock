@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="60">
+<style>
+  body { font-family: sans-serif; background:#ffffff; color:#000000;
+         text-align:center; margin: 8% 5% 0 5%; }
+  #clock { font-size: 100px; font-weight: bold; }
+  #date  { font-size: 34px; color:#444; margin-top:6px; }
+  #lunar { font-size: 30px; color:#444; margin-top:4px; }
+  .box { border:2px solid #000; margin-top:22px; padding:12px; }
+  .box-title { font-size: 32px; font-weight:bold; }
+  .box-content { font-size: 30px; margin-top:8px; line-height:1.5; }
+  table { margin:8px auto 0 auto; font-size:29px; border-collapse:collapse; }
+  td { padding:3px 12px; }
+</style>
+</head>
+<body>
+  <div id="clock">--:--</div>
+  <div id="date"></div>
+  <div id="lunar"></div>
+
+  <div class="box">
+    <div class="box-title">今日天气</div>
+    <div class="box-content" id="now">加载中...</div>
+  </div>
+
+  <div class="box">
+    <div class="box-title">天气趋势</div>
+    <table id="trend"><tr><td>加载中...</td></tr></table>
+  </div>
+
+  <div class="box">
+    <div class="box-title">今日黄历</div>
+    <div class="box-content" id="hl">加载中...</div>
+  </div>
+
+<script>
+  // ====== 只需要改这一行：城市拼音 ======
+  var CITY = "guangzhou";
+  // ===================================
+  var weekName = ["一","二","三","四","五","六","日"];
+
+  // 时钟和日期
+  function tick(){
+    var d = new Date();
+    document.getElementById('clock').textContent =
+      ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
+    document.getElementById('date').textContent =
+      (d.getMonth()+1)+"月"+d.getDate()+"日 星期"+weekName[(d.getDay()+6)%7];
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  // 天气：实况 + 今明后三天趋势（免费接口 wttr.in）
+  fetch("https://wttr.in/"+CITY+"?format=j1&lang=zh")
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      // 实况
+      var cur = d.current_condition[0];
+      document.getElementById('now').textContent =
+        cur.weatherDesc[0].value + " " + cur.temp_C + "℃";
+
+      // 趋势
+      var rows = "", labels = ["今天","明天","后天"];
+      for (var i=0; i<3; i++){
+        var w = d.weather[i];
+        var desc = w.hourly[4] ? w.hourly[4].weatherDesc[0].value
+                               : w.hourly[0].weatherDesc[0].value;
+        rows += "<tr><td>"+labels[i]+"</td><td>"+desc+"</td><td>"+
+                w.mintempC+"~"+w.maxtempC+"℃</td></tr>";
+      }
+      document.getElementById('trend').innerHTML = rows;
+    })
+    .catch(function(){
+      document.getElementById('now').textContent = "天气获取失败，1分钟后重试";
+      document.getElementById('trend').innerHTML = "<tr><td>获取失败</td></tr>";
+    });
+
+  // 黄历（农历 + 宜忌）
+  fetch("https://api.vvhan.com/api/zh/calendar")
+    .then(function(r){ return r.json(); })
+    .then(function(res){
+      var d = (res && res.data) ? res.data : res;
+      var nl = d.lunar_date || d.nongli || d.lunar || "";
+      var yi = (d.yi || d.suit || "").replace(/\s+/g, " ");
+      var ji = (d.ji || d.taboo || "").replace(/\s+/g, " ");
+      if (nl) document.getElementById('lunar').textContent = nl;
+      document.getElementById('hl').innerHTML =
+        (yi ? "宜 "+yi : "") + "<br>" + (ji ? "忌 "+ji : "");
+    })
+    .catch(function(){
+      document.getElementById('hl').textContent = "黄历获取失败，1分钟后自动重试";
+    });
+</script>
+</body>
+</html>
