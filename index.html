@@ -1,165 +1,292 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="refresh" content="300">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kindle 翻页时钟 · 天气 · 月历黄历</title>
+<!--
+  用法（必须用 Kindle 内置「体验版网页浏览器」打开本页面的在线地址，本地文件无法打开）：
+    推荐部署到 GitHub Pages / Gitee Pages / 任意静态空间，然后 Kindle 浏览器访问。
+  URL 参数：
+    ?city=上海        指定城市（默认北京，定位成功后自动记忆）
+    ?flip=0           关闭翻页动画（极老机型建议关闭）
+    ?blink=0          关闭冒号闪烁
+  Kindle 常亮：主页搜索框输入 ~ds 回车（重启后失效）；
+  新固件可尝试输入 ;ReadingTimeGoal off 回车。
+  页面每 30 分钟自动整体刷新一次（更新天气/跨月/跨天）。
+-->
 <style>
-  body { font-family: sans-serif; background:#fff; color:#000;
-         text-align:center; margin:6px 8px; }
-  /* 顶部星期+农历 */
-  #topline { font-size:19px; color:#333; }
-  /* 大时钟：黑色数字 */
-  #clock { font-size:95px; font-weight:bold; letter-spacing:4px;
-           margin-top:5px; line-height:1.1; }
-  /* 天气行 */
-  #weather { font-size:21px; margin-top:6px; min-height:26px; }
-  /* 月历 */
-  #cal-title { font-size:22px; font-weight:bold; margin-top:7px; }
-  table.cal { width:100%; border-collapse:collapse; margin-top:4px; table-layout:fixed; }
-  table.cal th { font-size:15px; padding:0; font-weight:bold; }
-  table.cal td { border:1px solid #000; height:45px; vertical-align:top;
-                 padding:1px 2px; text-align:left; overflow:hidden; }
-  .dnum { font-size:19px; font-weight:bold; }
-  .lunar { font-size:12px; color:#333; }
-  .tag { font-size:11px; background:#000; color:#fff; border-radius:4px; padding:0 2px; }
-  td.we { background:#eee; }
-  td.today { background:#000; color:#fff; }
-  td.today .lunar { color:#bbb; }
-  /* 简易黄历 */
-  #hl { font-size:17px; margin-top:7px; }
+html,body{margin:0;padding:0;background:#fff;color:#000;
+  font-family:Arial,"PingFang SC","Microsoft YaHei",sans-serif;
+  -webkit-text-size-adjust:none;user-select:none;}
+#clock{text-align:center;}
+.card{display:inline-block;position:relative;vertical-align:top;background:#fff;
+  margin:0 0.4%;overflow:hidden;}
+.half{position:absolute;left:0;top:0;width:100%;height:50%;overflow:hidden;background:#fff;}
+.half span{position:absolute;left:0;top:0;width:100%;text-align:center;font-weight:bold;color:#000;}
+.half.top{border-bottom:2px solid #000;}
+.half.bot{top:50%;}
+.half.flap{display:none;z-index:1;}
+.half.ft{-webkit-transform-origin:50% 100%;transform-origin:50% 100%;}
+.half.fb{-webkit-transform-origin:50% 0%;transform-origin:50% 0%;}
+.half.go{-webkit-transition:-webkit-transform .26s ease-in;transition:transform .26s ease-in;}
+#colon{display:inline-block;vertical-align:top;font-weight:bold;text-align:center;}
+#dateLine{text-align:center;margin:0.3em 0 0.1em;font-weight:bold;}
+#wx{text-align:center;margin:0.1em 0 0.3em;}
+#calHead{text-align:center;font-weight:bold;margin:0.2em 0;}
+table#cal{width:96%;margin:0 auto;border-collapse:collapse;table-layout:fixed;}
+table#cal th{border:1px solid #999;font-weight:bold;padding:1px 0;}
+table#cal td{border:1px solid #999;text-align:center;vertical-align:top;
+  padding:2px 0 3px;overflow:hidden;}
+td .d{font-size:1.25em;font-weight:bold;line-height:1.15;}
+td .l{font-size:0.62em;line-height:1.2;height:1.25em;overflow:hidden;white-space:nowrap;}
+td.wknd{background:#eee;}
+td.hol{background:#000;}
+td.hol .d,td.hol .l{color:#fff;}
+td.today{background:#000;}
+td.today .d,td.today .l{color:#fff;}
+#foot{text-align:center;margin:0.4em auto 0.6em;width:96%;line-height:1.5;}
 </style>
+<base target="_blank">
 </head>
 <body>
-  <div id="topline"></div>
-  <div id="clock">--:--</div>
-  <div id="weather">天气加载中...</div>
-  <div id="cal-title"></div>
-  <table class="cal" id="cal"></table>
-  <div id="hl"></div>
+<div id="clock">
+  <div class="card" id="c0"></div><div class="card" id="c1"></div><div id="colon">:</div><div class="card" id="c2"></div><div class="card" id="c3"></div>
+</div>
+<div id="dateLine"></div>
+<div id="wx">天气加载中…</div>
+<div id="calHead"></div>
+<table id="cal"></table>
+<div id="foot"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/lunar-javascript/lunar.js"></script>
+<script>
+if (typeof Solar === 'undefined') {
+  document.write('<script src="https://unpkg.com/lunar-javascript/lunar.js"><\/script>');
+}
+</script>
 
 <script>
-  // ====== 只需要改这两行城市名 ======
-  var CITY = "guangzhou";   // 查询天气用，保持拼音
-  var CITY_CN = "广州";   // 页面上显示用，写中文名
-  // =================================
-  var weekName = ["一","二","三","四","五","六","日"];
-  function p2(n){ return ("0"+n).slice(-2); }
+/* ================= 基础工具（ES5，兼容老 WebKit） ================= */
+function $(id){return document.getElementById(id);}
+function pad(n){return n<10?'0'+n:''+n;}
+var P={};
+(function(){var q=location.search.replace(/^\?/,'').split('&');
+for(var i=0;i<q.length;i++){var kv=q[i].split('=');if(kv[0]){try{P[kv[0]]=decodeURIComponent(kv[1]||'');}catch(e){P[kv[0]]=kv[1];}}}})();
+var FLIP=P.flip!=='0', BLINK=P.blink!=='0';
+function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
+function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+var HAS_T=(function(){var d=document.createElement('div');
+return d.style.webkitTransform!==undefined||d.style.transform!==undefined;})();
 
-  // 英文天气 → 中文对照表
-  var wxZh = {
-    "Sunny":"晴", "Clear":"晴", "Partly cloudy":"多云",
-    "Partly Cloudy":"多云", "Cloudy":"阴", "Overcast":"阴",
-    "Mist":"薄雾", "Fog":"雾", "Freezing fog":"冻雾",
-    "Patchy rain possible":"局部有雨", "Patchy light rain":"零星小雨",
-    "Light rain":"小雨", "Light rain shower":"小阵雨",
-    "Moderate rain":"中雨", "Moderate or heavy rain shower":"中到大阵雨",
-    "Heavy rain":"大雨", "Torrential rain":"暴雨",
-    "Patchy snow possible":"局部有雪", "Light snow":"小雪",
-    "Moderate snow":"中雪", "Heavy snow":"大雪",
-    "Patchy sleet possible":"局部雨夹雪", "Light sleet":"雨夹雪",
-    "Patchy light drizzle":"零星毛毛雨", "Light drizzle":"毛毛雨",
-    "Patchy light snow":"零星小雪", "Thundery outbreaks possible":"可能有雷暴",
-    "Moderate or heavy rain with thunder":"雷阵雨",
-    "Blizzard":"暴风雪", "Blowing snow":"吹雪", "Ice pellets":"冰粒",
-    "Rain":"雨", "Showers":"阵雨", "Drizzle":"毛毛雨", "Snow":"雪"
-  };
-  function zh(w){
-    w = (w+"").trim();
-    if (wxZh[w]) return wxZh[w];
-    for (var k in wxZh){
-      if (w.indexOf(k) >= 0) return wxZh[k];
+/* ================= 布局尺寸 ================= */
+function baseFont(){document.body.style.fontSize=Math.max(12,Math.round(window.innerWidth/26))+'px';}
+function sizeClock(){
+  var H=Math.round(window.innerHeight*0.30), W=Math.round(H*0.62);
+  var cards=document.getElementsByClassName('card');
+  for(var i=0;i<cards.length;i++){
+    cards[i].style.height=H+'px';cards[i].style.width=W+'px';
+    var sp=cards[i].getElementsByTagName('span');
+    for(var j=0;j<sp.length;j++){
+      sp[j].style.lineHeight=H+'px';
+      sp[j].style.fontSize=Math.round(H*0.80)+'px';
     }
-    return w;   // 没见过的词保持原样
   }
+  var col=$('colon');
+  col.style.lineHeight=H+'px';
+  col.style.fontSize=Math.round(H*0.55)+'px';
+  col.style.width=Math.round(W*0.42)+'px';
+  $('clock').style.marginTop=Math.round(window.innerHeight*0.025)+'px';
+}
 
-  // ---------- 时钟 ----------
-  function tickClock(){
-    var d = new Date();
-    document.getElementById('clock').textContent =
-      p2(d.getHours())+":"+p2(d.getMinutes());
+/* ================= 翻页时钟 ================= */
+var CARD_HTML='<div class="half top"><span>0</span></div>'+
+              '<div class="half bot"><span>0</span></div>'+
+              '<div class="half flap ft"><span>0</span></div>'+
+              '<div class="half flap fb"><span>0</span></div>';
+var lastStr='';
+function initClock(){
+  for(var i=0;i<4;i++){$('c'+i).innerHTML=CARD_HTML;}
+  var d=new Date();var s=pad(d.getHours())+pad(d.getMinutes());lastStr=s;
+  for(i=0;i<4;i++){
+    var sp=$('c'+i).getElementsByTagName('span');
+    sp[0].innerHTML=s.charAt(i);sp[1].innerHTML=s.charAt(i);
   }
-  tickClock();
-  setInterval(tickClock, 1000);
+}
+function setDigit(card,val){
+  var topS=card.children[0].getElementsByTagName('span')[0];
+  var botS=card.children[1].getElementsByTagName('span')[0];
+  if(topS.innerHTML===val){return;}
+  if(!FLIP||!HAS_T||card._busy){topS.innerHTML=val;botS.innerHTML=val;return;}
+  card._busy=true;
+  var old=topS.innerHTML;
+  topS.innerHTML=val;                       /* 上半：新数字立刻就位 */
+  var ft=card.children[2],fb=card.children[3];
+  ft.getElementsByTagName('span')[0].innerHTML=old;   /* 上折页：旧数字翻走 */
+  fb.getElementsByTagName('span')[0].innerHTML=val;   /* 下折页：新数字翻入 */
+  ft.style.display='block';fb.style.display='block';
+  ft.style.zIndex=6;fb.style.zIndex=6;
+  ft.className='half flap ft go';fb.className='half flap fb go';
+  ft.style.webkitTransform='rotateX(0deg)';ft.style.transform='rotateX(0deg)';
+  fb.style.webkitTransform='rotateX(-90deg)';fb.style.transform='rotateX(-90deg)';
+  void ft.offsetWidth;
+  ft.style.webkitTransform='rotateX(-90deg)';ft.style.transform='rotateX(-90deg)';
+  setTimeout(function(){
+    void fb.offsetWidth;
+    fb.style.webkitTransform='rotateX(0deg)';fb.style.transform='rotateX(0deg)';
+    setTimeout(function(){
+      botS.innerHTML=val;
+      ft.className='half flap ft';fb.className='half flap fb';
+      ft.style.display='none';fb.style.display='none';
+      ft.style.zIndex=1;fb.style.zIndex=1;
+      card._busy=false;
+    },300);
+  },260);
+}
+function tick(){
+  var d=new Date();
+  var s=pad(d.getHours())+pad(d.getMinutes());
+  if(s!==lastStr){for(var i=0;i<4;i++){setDigit($('c'+i),s.charAt(i));}lastStr=s;}
+  if(BLINK){$('colon').style.visibility=(d.getSeconds()%2===0)?'visible':'hidden';}
+}
+setInterval(tick,500);tick();
 
-  // ---------- 天气（强制中文显示） ----------
-  fetch("https://wttr.in/"+CITY+"?format=j1&lang=zh")
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      var cur = d.current_condition[0];
-      var t1 = d.weather[1];
-      document.getElementById('weather').textContent =
-        CITY_CN + " " + zh(cur.weatherDesc[0].value) + " " + cur.temp_C + "℃ ｜ 明天 " +
-        zh(t1.dayweather) + " " + t1.nighttemp + "~" + t1.daytemp + "℃";
-    })
-    .catch(function(){
-      document.getElementById('weather').textContent = "天气获取失败";
-    });
+/* ================= 天气（Open-Meteo，免密钥） ================= */
+var WX_TXT={0:'晴',1:'晴间多云',2:'多云',3:'阴',45:'雾',48:'雾',51:'毛毛雨',53:'毛毛雨',
+55:'毛毛雨',56:'冻毛毛雨',57:'冻毛毛雨',61:'小雨',63:'中雨',65:'大雨',66:'冻雨',67:'冻雨',
+71:'小雪',73:'中雪',75:'大雪',77:'雪粒',80:'阵雨',81:'阵雨',82:'强阵雨',
+85:'阵雪',86:'强阵雪',95:'雷阵雨',96:'雷暴冰雹',99:'雷暴冰雹'};
+function xhr(url,ok,err){
+  var x=new XMLHttpRequest();
+  x.onreadystatechange=function(){if(x.readyState===4){if(x.status===200){ok(x.responseText);}else{err();}}};
+  try{x.timeout=15000;x.ontimeout=err;}catch(e){}
+  x.open('GET',url,true);x.send(null);
+}
+function loadWeather(){
+  var city=P.city||lsGet('kw_city')||'北京';
+  $('wx').innerHTML='正在获取「'+city+'」天气…';
+  var fail=function(){$('wx').innerHTML='天气暂时不可用（请检查网络，或用 ?city=城市 指定）';};
+  xhr('https://geocoding-api.open-meteo.com/v1/search?name='+encodeURIComponent(city)+'&count=1&language=zh&format=json',
+    function(t){
+      try{
+        var g=JSON.parse(t);
+        if(g.results&&g.results.length){
+          var r=g.results[0];lsSet('kw_city',r.name);
+          var u='https://api.open-meteo.com/v1/forecast?latitude='+r.latitude+
+            '&longitude='+r.longitude+
+            '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m'+
+            '&timezone=auto&forecast_days=1';
+          xhr(u,function(t2){
+            try{
+              var c=JSON.parse(t2).current;
+              var txt=WX_TXT[c.weather_code];if(!txt){txt='天气'+(c.weather_code!=null?c.weather_code:'');}
+              $('wx').innerHTML=r.name+' '+txt+' '+Math.round(c.temperature_2m)+'°C'+
+                '（体感'+Math.round(c.apparent_temperature)+'°）<br>'+
+                '湿度'+Math.round(c.relative_humidity_2m)+'% · 风速'+Math.round(c.wind_speed_10m)+'km/h'+
+                ' · '+pad(new Date().getHours())+':'+pad(new Date().getMinutes())+'更新';
+            }catch(e){fail();}
+          },fail);
+        }else{$('wx').innerHTML='未找到城市：'+city;}
+      }catch(e){fail();}
+    },fail);
+}
 
-  // ---------- 月历 ----------
-  var now = new Date(), Y = now.getFullYear(), M = now.getMonth();
-  document.getElementById('cal-title').textContent = Y+"年"+(M+1)+"月";
-  var first = (new Date(Y, M, 1).getDay()+6)%7;   // 周一开头
-  var daysInMonth = new Date(Y, M+1, 0).getDate();
-  var html = '<tr><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th><th>日</th></tr>';
-  var day = 1;
-  for (var r=0; r<6 && day<=daysInMonth; r++){
-    html += '<tr>';
-    for (var c=0; c<7; c++){
-      var idx = r*7+c;
-      if (idx < first || day > daysInMonth){
-        html += '<td></td>';
-      } else {
-        var cls = '';
-        if (day === now.getDate()) cls += 'today ';
-        if (c >= 5) cls += 'we';
-        html += '<td id="c'+day+'" class="'+cls+'">'+
-                '<span class="dnum">'+day+'</span><br>'+
-                '<span class="lunar">·</span></td>';
-        day++;
+/* ================= 假期数据（官方公布） ================= */
+/* 2026 年依据：国办发明电〔2025〕7 号；2025 年依据国办发明电〔2024〕12 号 */
+var HOLIDAY_TABLE={};
+function addRange(s,e,name){
+  var y=+s.slice(0,4),m=+s.slice(5,7),d=+s.slice(8,10);
+  var end=new Date(+e.slice(0,4),+e.slice(5,7)-1,+e.slice(8,10));
+  var cur=new Date(y,m-1,d);
+  while(cur<=end){HOLIDAY_TABLE[cur.getFullYear()+'-'+pad(cur.getMonth()+1)+'-'+pad(cur.getDate())]={n:name,w:0};cur.setDate(cur.getDate()+1);}
+}
+function addWork(list){for(var i=0;i<list.length;i++){HOLIDAY_TABLE[list[i]]={n:'',w:1};}}
+addRange('2025-01-01','2025-01-01','元旦');
+addRange('2025-01-28','2025-02-04','春节');
+addRange('2025-04-04','2025-04-06','清明节');
+addRange('2025-05-01','2025-05-05','劳动节');
+addRange('2025-05-31','2025-06-02','端午节');
+addRange('2025-10-01','2025-10-08','国庆节·中秋');
+addWork(['2025-01-26','2025-02-08','2025-04-27','2025-09-28','2025-10-11']);
+addRange('2026-01-01','2026-01-03','元旦');
+addRange('2026-02-15','2026-02-23','春节');
+addRange('2026-04-04','2026-04-06','清明节');
+addRange('2026-05-01','2026-05-05','劳动节');
+addRange('2026-06-19','2026-06-21','端午节');
+addRange('2026-09-25','2026-09-27','中秋节');
+addRange('2026-10-01','2026-10-07','国庆节');
+addWork(['2026-01-04','2026-02-14','2026-02-28','2026-05-09','2026-09-20','2026-10-10']);
+
+function holidayInfo(y,m,d){
+  var t=HOLIDAY_TABLE[y+'-'+pad(m)+'-'+pad(d)];
+  if(t){return t;}
+  if(typeof HolidayUtil!=='undefined'){
+    try{var h=HolidayUtil.getHoliday(y,m,d);
+      if(h){return {n:h.getName(),w:h.isWork()?1:0};}
+    }catch(e){}
+  }
+  return null;
+}
+
+/* ================= 月历 ================= */
+function buildCalendar(){
+  var now=new Date(),y=now.getFullYear(),m=now.getMonth();
+  var startDow=(new Date(y,m,1).getDay()+6)%7; /* 周一=0 */
+  var days=new Date(y,m+1,0).getDate();
+  $('calHead').innerHTML=y+' 年 '+(m+1)+' 月';
+  var html='<tr><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th><th>日</th></tr>';
+  var d=1,rows=Math.ceil((startDow+days)/7),luOK=(typeof Solar!=='undefined');
+  for(var r=0;r<rows;r++){
+    html+='<tr>';
+    for(var c=0;c<7;c++){
+      var idx=r*7+c;
+      if(idx<startDow||d>days){html+='<td></td>';continue;}
+      var dd=d++,cls='',label='',lunar='';
+      if(luOK){
+        try{
+          var lu=Solar.fromYmd(y,m+1,dd).getLunar();
+          lunar=(lu.getDay()===1)?(lu.getMonthInChinese()+'月'):lu.getDayInChinese();
+          var fs=lu.getFestivals();
+          if(fs&&fs.length){label=fs[0];}
+          else{var ofs=lu.getOtherFestivals();if(ofs&&ofs.length){label=ofs[0];}}
+        }catch(e){}
       }
+      var hol=holidayInfo(y,m+1,dd);
+      if(hol&&hol.n){label=hol.n;}
+      if(hol&&hol.w){label='班 '+label;}
+      if(dd===now.getDate()){cls='today';}
+      else if(hol&&!hol.w){cls='hol';}
+      else if(c>=5){cls='wknd';}
+      html+='<td class="'+cls+'"><div class="d">'+dd+'</div><div class="l">'+(label||lunar||'&nbsp;')+'</div></td>';
     }
-    html += '</tr>';
+    html+='</tr>';
   }
-  document.getElementById('cal').innerHTML = html;
+  $('cal').innerHTML=html;
+}
 
-  // ---------- 逐日获取农历 / 假期 / 今日黄历 ----------
-  for (var dd=1; dd<=daysInMonth; dd++){
-    (function(day){
-      fetch("https://api.vvhan.com/api/zh/calendar?date="+Y+"-"+p2(M+1)+"-"+p2(day))
-        .then(function(r){ return r.json(); })
-        .then(function(res){
-          var d2 = (res && res.data) ? res.data : res;
-          var cell = document.getElementById('c'+day);
-          if (!cell || !d2) return;
-          // 农历（截取“月”后面的部分：初一、初二…）
-          var nl = d2.lunar_date || d2.nongli || d2.lunar || "";
-          nl = (nl+"").replace(/^农历/, "");
-          var lm = nl.match(/月(.+)$/);
-          if (lm) nl = lm[1];
-          if (nl) cell.querySelector('.lunar').textContent = nl;
-          // 节假日标记
-          var tag = d2.festival || d2.holiday_name || d2.holidayName || "";
-          if (typeof tag !== "string") tag = "";
-          if (tag && tag !== "无" && tag !== "null"){
-            var s = document.createElement('span');
-            s.className = 'tag'; s.textContent = tag;
-            cell.appendChild(document.createElement('br'));
-            cell.appendChild(s);
-          }
-          // 今天：顶部农历 + 底部黄历
-          if (day === now.getDate()){
-            document.getElementById('topline').textContent =
-              "星期"+weekName[(now.getDay()+6)%7]+(nl ? " · 农历"+nl : "");
-            var yi = (d2.yi || d2.suit || "").replace(/\s+/g, " ");
-            var ji = (d2.ji || d2.taboo || "").replace(/\s+/g, " ");
-            document.getElementById('hl').textContent =
-              "宜 "+(yi||"—")+" ｜ 忌 "+(ji||"—");
-          }
-        })
-        .catch(function(){});
-    })(dd);
-  }
+/* ================= 黄历 + 日期行 ================= */
+function buildDateLine(){
+  var d=new Date();
+  var wk='日一二三四五六'.charAt(d.getDay());
+  $('dateLine').innerHTML=(d.getMonth()+1)+'月'+d.getDate()+'日 星期'+wk;
+}
+function buildFoot(){
+  if(typeof Solar==='undefined'){$('foot').innerHTML='';return;}
+  try{
+    var lu=Solar.fromDate(new Date()).getLunar();
+    var yi=lu.getDayYi(),ji=lu.getDayJi();
+    $('foot').innerHTML=
+      '农历'+lu.getYearInChinese()+'年'+lu.getMonthInChinese()+'月'+lu.getDayInChinese()+
+      ' · '+lu.getYearInGanZhi()+'（'+lu.getYearShengXiao()+'）年 星期'+lu.getWeekInChinese()+'<br>'+
+      '<b>宜</b> '+yi.slice(0,5).join(' ')+'　<b>忌</b> '+ji.slice(0,5).join(' ');
+  }catch(e){$('foot').innerHTML='';}
+}
+
+/* ================= 启动 ================= */
+baseFont();initClock();sizeClock();
+buildDateLine();buildCalendar();buildFoot();loadWeather();
+window.onresize=function(){baseFont();sizeClock();};
+setTimeout(function(){location.reload();},30*60*1000);
 </script>
 </body>
 </html>
-
