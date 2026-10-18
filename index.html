@@ -83,7 +83,7 @@ function sizeClock(){
   var cards=document.getElementsByClassName('card');
   for(var i=0;i<cards.length;i++){
     cards[i].style.height=H+'px';cards[i].style.width=W+'px';
-    var F=Math.round(H*0.8),PT=Math.max(0,Math.round((H-F*1.09)/2));
+    var F=Math.round(H*0.80),PT=Math.max(0,Math.round((H-F*1.09)/2));
     var sp=cards[i].getElementsByTagName('span');
     for(var j=0;j<sp.length;j++){
       sp[j].style.lineHeight='normal';
@@ -97,7 +97,7 @@ function sizeClock(){
   col.style.fontSize=FC+'px';
   col.style.paddingTop=Math.max(0,Math.round((H-FC*1.09)/2))+'px';
   col.style.width=Math.round(H*0.22)+'px';
-  $('clock').style.marginTop=Math.round(window.innerHeight*0.025)+'px';
+  $('clock').style.marginTop='0px';
 }
 
 /* ================= 时钟 ================= */
