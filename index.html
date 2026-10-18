@@ -24,9 +24,9 @@ html,body{margin:0;padding:0;background:#fff;color:#000;
   margin:0 0.4%;overflow:hidden;border-bottom:2px solid #000;}
 .card span{display:block;width:100%;text-align:center;font-weight:bold;color:#000;font-family:'DSEG7',Arial,sans-serif;}
 #colon{display:inline-block;vertical-align:top;font-weight:bold;text-align:center;font-family:'DSEG7',Arial,sans-serif;}
-#dateLine{text-align:center;margin:0.3em 0 0.1em;font-weight:bold;}
-#wx{text-align:center;margin:0.1em 0 0.3em;}
-#calHead{text-align:center;font-weight:bold;margin:0.2em 0;}
+#dateLine{text-align:center;margin:0.15em 0 0.05em;font-weight:bold;}
+#wx{text-align:center;margin:0.05em 0 0.15em;}
+#calHead{text-align:center;font-weight:bold;margin:0.1em 0;}
 table#cal{width:96%;margin:0 auto;border-collapse:collapse;table-layout:fixed;}
 table#cal th{border:1px solid #999;font-weight:bold;padding:1px 0;}
 table#cal td{border:1px solid #999;text-align:center;vertical-align:top;padding:1px 0 2px;overflow:hidden;}
@@ -37,7 +37,7 @@ td.hol{background:#000;}
 td.hol .d,td.hol .l{color:#fff;}
 td.today{background:#000;}
 td.today .d,td.today .l{color:#fff;}
-#foot{text-align:center;margin:0.3em auto 0.4em;width:96%;line-height:1.4;font-size:0.85em;}
+#foot{text-align:center;margin:0.15em auto 0.2em;width:96%;line-height:1.3;font-size:0.8em;}
 </style>
 <base target="_blank">
 </head>
@@ -79,7 +79,7 @@ return d.style.webkitTransform!==undefined||d.style.transform!==undefined;})();
 /* ================= 布局尺寸 ================= */
 function baseFont(){document.body.style.fontSize=Math.max(12,Math.round(window.innerWidth/26))+'px';}
 function sizeClock(){
-  var H=Math.round(window.innerHeight*0.26);var W=Math.min(Math.round(H*0.62),Math.floor((window.innerWidth*0.92-Math.round(H*0.22))/4.4));
+  var H=Math.round(window.innerHeight*0.29);var W=Math.min(Math.round(H*0.62),Math.floor((window.innerWidth*0.92-Math.round(H*0.22))/4.4));
   var cards=document.getElementsByClassName('card');
   for(var i=0;i<cards.length;i++){
     cards[i].style.height=H+'px';cards[i].style.width=W+'px';
@@ -266,9 +266,9 @@ if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){si
 window.onload=function(){sizeClock();setTimeout(hideBar,800);};
 function hideBar(){ /* 触发 Kindle 浏览器自动收起工具栏 */
   try{
-    var sp=$('spacer');if(sp){sp.style.height='60px';}
-    document.body.style.minHeight=(window.innerHeight+60)+'px';
-    window.scrollTo(0,60);
+    var sp=$('spacer');if(sp){sp.style.height='40px';}
+    document.body.style.minHeight=(window.innerHeight+40)+'px';
+    window.scrollTo(0,40);
   }catch(e){}
 }
 setTimeout(function(){location.reload();},30*60*1000);
