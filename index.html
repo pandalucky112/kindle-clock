@@ -2,97 +2,185 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta http-equiv="refresh" content="60">
+<meta http-equiv="refresh" content="300">
 <style>
-  body { font-family: sans-serif; background:#ffffff; color:#000000;
-         text-align:center; margin: 8% 5% 0 5%; }
-  #clock { font-size: 100px; font-weight: bold; }
-  #date  { font-size: 34px; color:#444; margin-top:6px; }
-  #lunar { font-size: 30px; color:#444; margin-top:4px; }
-  .box { border:2px solid #000; margin-top:22px; padding:12px; }
-  .box-title { font-size: 32px; font-weight:bold; }
-  .box-content { font-size: 30px; margin-top:8px; line-height:1.5; }
-  table { margin:8px auto 0 auto; font-size:29px; border-collapse:collapse; }
-  td { padding:3px 12px; }
+  body { font-family: sans-serif; background:#fff; color:#000;
+         text-align:center; margin:10px 12px; }
+  /* 顶部星期+农历 */
+  #topline { font-size:25px; color:#333; }
+  /* 翻页时钟 */
+  .clock { display:flex; justify-content:center; margin-top:8px; }
+  .digit { position:relative; width:102px; height:148px; background:#000;
+           border-radius:14px; color:#fff; font-size:92px; font-weight:bold;
+           margin:0 5px; overflow:hidden; }
+  .digit > div { position:absolute; left:0; right:0; height:50%;
+                 overflow:hidden; background:#000; display:block; }
+  .digit .top { top:0; border-radius:14px 14px 0 0; }
+  .digit .bottom { bottom:0; border-radius:0 0 14px 14px; }
+  .digit .ft { top:0; z-index:3; transform-origin:bottom;
+               border-radius:14px 14px 0 0; }
+  .digit .fb { bottom:0; z-index:3; transform-origin:top;
+               transform:rotateX(90deg); border-radius:0 0 14px 14px; }
+  .digit .ft.fold { transform:rotateX(-90deg); transition:transform .28s ease-in; }
+  .digit .fb.unfold { transform:rotateX(0deg); transition:transform .28s ease-out; }
+  .inner { display:flex; justify-content:center; align-items:center;
+           width:100%; height:148px; }
+  .bottom .inner, .fb .inner { margin-top:-74px; }
+  .colon { font-size:78px; font-weight:bold; line-height:148px; }
+  /* 天气行 */
+  #weather { font-size:27px; margin-top:10px; min-height:34px; }
+  /* 月历 */
+  #cal-title { font-size:29px; font-weight:bold; margin-top:12px; }
+  table.cal { width:100%; border-collapse:collapse; margin-top:6px; table-layout:fixed; }
+  table.cal th { font-size:19px; padding:1px; font-weight:bold; }
+  table.cal td { border:1px solid #000; height:50px; vertical-align:top;
+                 padding:2px 3px; text-align:left; overflow:hidden; }
+  .dnum { font-size:23px; font-weight:bold; }
+  .lunar { font-size:14px; color:#333; }
+  .tag { font-size:13px; background:#000; color:#fff; border-radius:5px; padding:0 3px; }
+  td.we { background:#eee; }
+  td.today { background:#000; color:#fff; }
+  td.today .lunar { color:#bbb; }
+  /* 简易黄历 */
+  #hl { font-size:22px; margin-top:10px; }
 </style>
 </head>
 <body>
-  <div id="clock">--:--</div>
-  <div id="date"></div>
-  <div id="lunar"></div>
-
-  <div class="box">
-    <div class="box-title">今日天气</div>
-    <div class="box-content" id="now">加载中...</div>
+  <div id="topline"></div>
+  <div class="clock">
+    <div class="digit" id="d0"></div>
+    <div class="digit" id="d1"></div>
+    <div class="colon">:</div>
+    <div class="digit" id="d2"></div>
+    <div class="digit" id="d3"></div>
   </div>
-
-  <div class="box">
-    <div class="box-title">天气趋势</div>
-    <table id="trend"><tr><td>加载中...</td></tr></table>
-  </div>
-
-  <div class="box">
-    <div class="box-title">今日黄历</div>
-    <div class="box-content" id="hl">加载中...</div>
-  </div>
+  <div id="weather">天气加载中...</div>
+  <div id="cal-title"></div>
+  <table class="cal" id="cal"></table>
+  <div id="hl"></div>
 
 <script>
-  // ====== 只需要改这一行：城市拼音 ======
-  var CITY = "guangzhou";
-  // ===================================
+  // ====== 只需要改这两行城市名 ======
+  var CITY = "guangzhou";   // 查询天气用，保持拼音
+  var CITY_CN = "广州";   // 页面上显示用，写中文名
+  // =================================
   var weekName = ["一","二","三","四","五","六","日"];
+  function p2(n){ return ("0"+n).slice(-2); }
 
-  // 时钟和日期
-  function tick(){
-    var d = new Date();
-    document.getElementById('clock').textContent =
-      ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2);
-    document.getElementById('date').textContent =
-      (d.getMonth()+1)+"月"+d.getDate()+"日 星期"+weekName[(d.getDay()+6)%7];
+  // ---------- 翻页时钟 ----------
+  var digitEls = [];
+  for (var i=0; i<4; i++){
+    var el = document.getElementById('d'+i);
+    el.innerHTML = '<div class="top"><div class="inner">0</div></div>'+
+                   '<div class="bottom"><div class="inner">0</div></div>'+
+                   '<div class="ft"><div class="inner">0</div></div>'+
+                   '<div class="fb"><div class="inner">0</div></div>';
+    digitEls.push(el);
   }
-  tick();
-  setInterval(tick, 1000);
+  function setDigit(el, val){
+    var c = el.children;
+    var top = c[0].firstChild, bot = c[1].firstChild,
+        ft = c[2].firstChild, fb = c[3].firstChild;
+    var old = top.textContent;
+    if (old === val) return;
+    ft.textContent = old; fb.textContent = old;
+    top.textContent = val;
+    c[2].classList.add('fold');
+    setTimeout(function(){
+      c[3].classList.add('unfold');
+      setTimeout(function(){
+        bot.textContent = val;
+        c[2].classList.remove('fold');
+        c[3].classList.remove('unfold');
+      }, 300);
+    }, 300);
+  }
+  function tickClock(){
+    var d = new Date(), t = p2(d.getHours())+p2(d.getMinutes());
+    for (var i=0; i<4; i++) setDigit(digitEls[i], t.charAt(i));
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
 
-  // 天气：实况 + 今明后三天趋势（免费接口 wttr.in）
+  // ---------- 天气（中文显示） ----------
   fetch("https://wttr.in/"+CITY+"?format=j1&lang=zh")
     .then(function(r){ return r.json(); })
     .then(function(d){
-      // 实况
       var cur = d.current_condition[0];
-      document.getElementById('now').textContent =
-        cur.weatherDesc[0].value + " " + cur.temp_C + "℃";
+      var t1 = d.weather[1];
+      document.getElementById('weather').textContent =
+        CITY_CN + " " + cur.weatherDesc[0].value + " " + cur.temp_C + "℃ ｜ 明天 " +
+        t1.dayweather + " " + t1.nighttemp + "~" + t1.daytemp + "℃";
+    })
+    .catch(function(){
+      document.getElementById('weather').textContent = "天气获取失败";
+    });
 
-      // 趋势
-      var rows = "", labels = ["今天","明天","后天"];
-      for (var i=0; i<3; i++){
-        var w = d.weather[i];
-        var desc = w.hourly[4] ? w.hourly[4].weatherDesc[0].value
-                               : w.hourly[0].weatherDesc[0].value;
-        rows += "<tr><td>"+labels[i]+"</td><td>"+desc+"</td><td>"+
-                w.mintempC+"~"+w.maxtempC+"℃</td></tr>";
+  // ---------- 月历 ----------
+  var now = new Date(), Y = now.getFullYear(), M = now.getMonth();
+  document.getElementById('cal-title').textContent = Y+"年"+(M+1)+"月";
+  var first = (new Date(Y, M, 1).getDay()+6)%7;   // 周一开头
+  var daysInMonth = new Date(Y, M+1, 0).getDate();
+  var html = '<tr><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th><th>日</th></tr>';
+  var day = 1;
+  for (var r=0; r<6 && day<=daysInMonth; r++){
+    html += '<tr>';
+    for (var c=0; c<7; c++){
+      var idx = r*7+c;
+      if (idx < first || day > daysInMonth){
+        html += '<td></td>';
+      } else {
+        var cls = '';
+        if (day === now.getDate()) cls += 'today ';
+        if (c >= 5) cls += 'we';
+        html += '<td id="c'+day+'" class="'+cls+'">'+
+                '<span class="dnum">'+day+'</span><br>'+
+                '<span class="lunar">·</span></td>';
+        day++;
       }
-      document.getElementById('trend').innerHTML = rows;
-    })
-    .catch(function(){
-      document.getElementById('now').textContent = "天气获取失败，1分钟后重试";
-      document.getElementById('trend').innerHTML = "<tr><td>获取失败</td></tr>";
-    });
+    }
+    html += '</tr>';
+  }
+  document.getElementById('cal').innerHTML = html;
 
-  // 黄历（农历 + 宜忌）
-  fetch("https://api.vvhan.com/api/zh/calendar")
-    .then(function(r){ return r.json(); })
-    .then(function(res){
-      var d = (res && res.data) ? res.data : res;
-      var nl = d.lunar_date || d.nongli || d.lunar || "";
-      var yi = (d.yi || d.suit || "").replace(/\s+/g, " ");
-      var ji = (d.ji || d.taboo || "").replace(/\s+/g, " ");
-      if (nl) document.getElementById('lunar').textContent = nl;
-      document.getElementById('hl').innerHTML =
-        (yi ? "宜 "+yi : "") + "<br>" + (ji ? "忌 "+ji : "");
-    })
-    .catch(function(){
-      document.getElementById('hl').textContent = "黄历获取失败，1分钟后自动重试";
-    });
+  // ---------- 逐日获取农历 / 假期 / 今日黄历 ----------
+  for (var dd=1; dd<=daysInMonth; dd++){
+    (function(day){
+      fetch("https://api.vvhan.com/api/zh/calendar?date="+Y+"-"+p2(M+1)+"-"+p2(day))
+        .then(function(r){ return r.json(); })
+        .then(function(res){
+          var d2 = (res && res.data) ? res.data : res;
+          var cell = document.getElementById('c'+day);
+          if (!cell || !d2) return;
+          // 农历（截取“月”后面的部分：初一、初二…）
+          var nl = d2.lunar_date || d2.nongli || d2.lunar || "";
+          nl = (nl+"").replace(/^农历/, "");
+          var lm = nl.match(/月(.+)$/);
+          if (lm) nl = lm[1];
+          if (nl) cell.querySelector('.lunar').textContent = nl;
+          // 节假日标记
+          var tag = d2.festival || d2.holiday_name || d2.holidayName || "";
+          if (typeof tag !== "string") tag = "";
+          if (tag && tag !== "无" && tag !== "null"){
+            var s = document.createElement('span');
+            s.className = 'tag'; s.textContent = tag;
+            cell.appendChild(document.createElement('br'));
+            cell.appendChild(s);
+          }
+          // 今天：顶部农历 + 底部黄历
+          if (day === now.getDate()){
+            document.getElementById('topline').textContent =
+              "星期"+weekName[(now.getDay()+6)%7]+(nl ? " · 农历"+nl : "");
+            var yi = (d2.yi || d2.suit || "").replace(/\s+/g, " ");
+            var ji = (d2.ji || d2.taboo || "").replace(/\s+/g, " ");
+            document.getElementById('hl').textContent =
+              "宜 "+(yi||"—")+" ｜ 忌 "+(ji||"—");
+          }
+        })
+        .catch(function(){});
+    })(dd);
+  }
 </script>
 </body>
 </html>
+
