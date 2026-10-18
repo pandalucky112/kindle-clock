@@ -22,7 +22,7 @@ html,body{margin:0;padding:0;background:#fff;color:#000;
 #clock{text-align:center;}
 .card{display:inline-block;position:relative;vertical-align:top;background:#fff;
   margin:0 0.4%;overflow:hidden;border-bottom:2px solid #000;}
-.card span{display:block;width:100%;text-align:center;font-weight:bold;color:#000;font-family:'DSEG7',Arial,sans-serif;}
+.card span{display:block;width:100%;text-align:center;font-weight:bold;color:#000;font-family:'DSEG7',Arial,sans-serif;-webkit-transform:scaleX(0.85);transform:scaleX(0.85);}
 #colon{display:inline-block;vertical-align:top;font-weight:bold;text-align:center;font-family:'DSEG7',Arial,sans-serif;}
 #dateLine{text-align:center;margin:0.15em 0 0.05em;font-weight:bold;}
 #wx{text-align:center;margin:0.05em 0 0.15em;}
@@ -79,7 +79,7 @@ return d.style.webkitTransform!==undefined||d.style.transform!==undefined;})();
 /* ================= 布局尺寸 ================= */
 function baseFont(){document.body.style.fontSize=Math.max(12,Math.round(window.innerWidth/26))+'px';}
 function sizeClock(){
-  var H=Math.round(window.innerHeight*0.29);var W=Math.min(Math.round(H*0.62),Math.floor((window.innerWidth*0.92-Math.round(H*0.22))/4.4));
+  var H=Math.round(window.innerHeight*0.29);var W=Math.min(Math.round(H*0.52),Math.floor((window.innerWidth*0.82-Math.round(H*0.18))/4.3));
   var cards=document.getElementsByClassName('card');
   for(var i=0;i<cards.length;i++){
     cards[i].style.height=H+'px';cards[i].style.width=W+'px';
@@ -96,7 +96,7 @@ function sizeClock(){
   col.style.lineHeight='normal';
   col.style.fontSize=FC+'px';
   col.style.paddingTop=Math.max(0,Math.round((H-FC*1.09)/2))+'px';
-  col.style.width=Math.round(H*0.22)+'px';
+  col.style.width=Math.round(H*0.18)+'px';
   $('clock').style.marginTop='0px';
 }
 
