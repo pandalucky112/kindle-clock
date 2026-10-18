@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kindle 时钟 · 天气 · 月历黄历</title>
+<!--
+  用法：部署到 GitHub Pages / Gitee Pages / 任意静态空间，Kindle 浏览器访问。
+  URL 参数：?city=上海  指定城市（默认北京，定位成功后自动记忆）
+            ?flip=1    开启翻页动画（默认关闭，数字直切切换）
+            ?blink=0   关闭冒号闪烁
+  Kindle 常亮：主页搜索框输入 ~ds 回车；页面每 30 分钟自动整体刷新。
+-->
 <style>
 html,body{margin:0;padding:0;background:#fff;color:#000;
   font-family:Arial,"PingFang SC","Microsoft YaHei",sans-serif;
@@ -87,7 +94,7 @@ function sizeClock(){
   $('clock').style.marginTop=Math.round(window.innerHeight*0.025)+'px';
 }
 
-/* ================= 时钟（默认直切，?flip=0 开翻页） ================= */
+/* ================= 时钟（默认直切，?flip=1 开翻页） ================= */
 var CARD_HTML='<div class="half top"><span>0</span></div>'+
               '<div class="half bot"><span>0</span></div>'+
               '<div class="half flap ft"><span>0</span></div>'+
