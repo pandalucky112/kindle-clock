@@ -5,15 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kindle 翻页时钟 · 天气 · 月历黄历</title>
 <!--
-  用法（必须用 Kindle 内置「体验版网页浏览器」打开本页面的在线地址，本地文件无法打开）：
-    推荐部署到 GitHub Pages / Gitee Pages / 任意静态空间，然后 Kindle 浏览器访问。
-  URL 参数：
-    ?city=上海        指定城市（默认北京，定位成功后自动记忆）
-    ?flip=0           关闭翻页动画（极老机型建议关闭）
-    ?blink=0          关闭冒号闪烁
-  Kindle 常亮：主页搜索框输入 ~ds 回车（重启后失效）；
-  新固件可尝试输入 ;ReadingTimeGoal off 回车。
-  页面每 30 分钟自动整体刷新一次（更新天气/跨月/跨天）。
 -->
 <style>
 html,body{margin:0;padding:0;background:#fff;color:#000;
@@ -73,7 +64,7 @@ function pad(n){return n<10?'0'+n:''+n;}
 var P={};
 (function(){var q=location.search.replace(/^\?/,'').split('&');
 for(var i=0;i<q.length;i++){var kv=q[i].split('=');if(kv[0]){try{P[kv[0]]=decodeURIComponent(kv[1]||'');}catch(e){P[kv[0]]=kv[1];}}}})();
-var FLIP=P.flip!=='0', BLINK=P.blink!=='0';
+var FLIP=P.flip==='1', BLINK=P.blink!=='0';
 function lsGet(k){try{return localStorage.getItem(k);}catch(e){return null;}}
 function lsSet(k,v){try{localStorage.setItem(k,v);}catch(e){}}
 var HAS_T=(function(){var d=document.createElement('div');
