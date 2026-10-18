@@ -22,7 +22,7 @@ html,body{margin:0;padding:0;background:#fff;color:#000;
 #clock{text-align:center;font-size:0;letter-spacing:0;}
 .card{display:inline-block;position:relative;vertical-align:top;background:#fff;
   margin:0 0.3%;overflow:hidden;border-bottom:2px solid #000;}
-.card span{display:block;width:100%;text-align:center;font-weight:bold;color:#000;font-family:'DSEG7',Arial,sans-serif;-webkit-transform:scaleX(1.08);transform:scaleX(1.08)}
+.card span{display:block;width:100%;text-align:center;font-weight:bold;color:#000;font-family:'DSEG7',Arial,sans-serif;-webkit-transform:scaleX(1.08);transform:scaleX(1.08);-webkit-text-stroke:3px #000;text-stroke:3px #000}
 #colon{display:inline-block;vertical-align:top;font-weight:bold;text-align:center;font-family:'DSEG7',Arial,sans-serif;}
 #dateLine{text-align:center;margin:0.15em 0 0.05em;font-weight:bold;}
 #wx{text-align:center;margin:0.05em 0 0.15em;}
@@ -82,7 +82,7 @@ function sizeClock(){
   var cards=document.getElementsByClassName('card');
   for(var i=0;i<cards.length;i++){
     cards[i].style.height=H+'px';cards[i].style.width=W+'px';
-    var F=Math.round(H*0.88),PT=0;
+    var F=Math.round(H*0.89),PT=0;
     var sp=cards[i].getElementsByTagName('span');
     for(var j=0;j<sp.length;j++){
       sp[j].style.lineHeight='normal';
