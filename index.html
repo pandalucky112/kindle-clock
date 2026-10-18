@@ -3,8 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Kindle 翻页时钟 · 天气 · 月历黄历</title>
+<title>Kindle 时钟 · 天气 · 月历黄历</title>
 <!--
+  用法：部署到 GitHub Pages / Gitee Pages / 任意静态空间，Kindle 浏览器访问。
+  URL 参数：?city=上海  指定城市（默认北京，定位成功后自动记忆）
+            ?flip=1    开启翻页动画（默认关闭，数字直切切换）
+            ?blink=0   关闭冒号闪烁
+  Kindle 常亮：主页搜索框输入 ~ds 回车；页面每 30 分钟自动整体刷新。
 -->
 <style>
 html,body{margin:0;padding:0;background:#fff;color:#000;
@@ -38,7 +43,6 @@ td.today{background:#000;}
 td.today .d,td.today .l{color:#fff;}
 #foot{text-align:center;margin:0.4em auto 0.6em;width:96%;line-height:1.5;}
 </style>
-<base target="_blank">
 </head>
 <body>
 <div id="clock">
@@ -90,7 +94,7 @@ function sizeClock(){
   $('clock').style.marginTop=Math.round(window.innerHeight*0.025)+'px';
 }
 
-/* ================= 翻页时钟 ================= */
+/* ================= 时钟（默认直切，?flip=0 开翻页） ================= */
 var CARD_HTML='<div class="half top"><span>0</span></div>'+
               '<div class="half bot"><span>0</span></div>'+
               '<div class="half flap ft"><span>0</span></div>'+
@@ -111,10 +115,10 @@ function setDigit(card,val){
   if(!FLIP||!HAS_T||card._busy){topS.innerHTML=val;botS.innerHTML=val;return;}
   card._busy=true;
   var old=topS.innerHTML;
-  topS.innerHTML=val;                       /* 上半：新数字立刻就位 */
+  topS.innerHTML=val;
   var ft=card.children[2],fb=card.children[3];
-  ft.getElementsByTagName('span')[0].innerHTML=old;   /* 上折页：旧数字翻走 */
-  fb.getElementsByTagName('span')[0].innerHTML=val;   /* 下折页：新数字翻入 */
+  ft.getElementsByTagName('span')[0].innerHTML=old;
+  fb.getElementsByTagName('span')[0].innerHTML=val;
   ft.style.display='block';fb.style.display='block';
   ft.style.zIndex=6;fb.style.zIndex=6;
   ft.className='half flap ft go';fb.className='half flap fb go';
@@ -183,7 +187,6 @@ function loadWeather(){
 }
 
 /* ================= 假期数据（官方公布） ================= */
-/* 2026 年依据：国办发明电〔2025〕7 号；2025 年依据国办发明电〔2024〕12 号 */
 var HOLIDAY_TABLE={};
 function addRange(s,e,name){
   var y=+s.slice(0,4),m=+s.slice(5,7),d=+s.slice(8,10);
