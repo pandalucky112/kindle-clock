@@ -42,6 +42,7 @@ td.today .d,td.today .l{color:#fff;}
 <base target="_blank">
 </head>
 <body>
+<div id="spacer"></div>
 <div id="clock">
   <div class="card" id="c0"></div><div class="card" id="c1"></div><div id="colon">:</div><div class="card" id="c2"></div><div class="card" id="c3"></div>
 </div>
@@ -82,7 +83,7 @@ function sizeClock(){
   var cards=document.getElementsByClassName('card');
   for(var i=0;i<cards.length;i++){
     cards[i].style.height=H+'px';cards[i].style.width=W+'px';
-    var F=Math.round(H*0.58),PT=Math.max(0,Math.round((H-F*1.09)/2));
+    var F=Math.round(H*0.64),PT=Math.max(0,Math.round((H-F*1.09)/2));
     var sp=cards[i].getElementsByTagName('span');
     for(var j=0;j<sp.length;j++){
       sp[j].style.lineHeight='normal';
@@ -262,7 +263,14 @@ setInterval(tick,500);tick();
 buildDateLine();buildCalendar();buildFoot();loadWeather();
 window.onresize=function(){baseFont();sizeClock();};
 if(document.fonts&&document.fonts.ready){document.fonts.ready.then(function(){sizeClock();});}
-window.onload=function(){sizeClock();};
+window.onload=function(){sizeClock();setTimeout(hideBar,800);};
+function hideBar(){ /* 触发 Kindle 浏览器自动收起工具栏 */
+  try{
+    var sp=$('spacer');if(sp){sp.style.height='60px';}
+    document.body.style.minHeight=(window.innerHeight+60)+'px';
+    window.scrollTo(0,60);
+  }catch(e){}
+}
 setTimeout(function(){location.reload();},30*60*1000);
 </script>
 </body>
